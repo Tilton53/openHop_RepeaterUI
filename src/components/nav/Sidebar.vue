@@ -32,6 +32,7 @@ const dataService = useDataService();
 const packetStore = usePacketStore();
 const { theme } = useTheme();
 const logoSrc = computed(() => theme.value === 'dark' ? logoDark : logoLight);
+const logoFilterClass = 'grayscale opacity-70';
 const { isPinned, togglePin } = useSidebarPin();
 
 const pinIconClass = computed(() =>
@@ -232,7 +233,7 @@ const currentTime = computed(() => {
       <div :class="['mb-4', isMobile ? 'flex items-start justify-between' : '']">
         <div>
           <div :class="['flex', isMobile ? 'mb-2' : 'mb-3 justify-center']">
-            <img :src="logoSrc" alt="pyMC" :class="isMobile ? 'h-[5rem]' : 'h-[6.5rem]'" />
+            <img :src="logoSrc" alt="pyMC" :class="[isMobile ? 'h-[5rem]' : 'h-[6.5rem]', logoFilterClass]" />
           </div>
           <p class="text-content-secondary dark:text-content-muted text-sm">
             {{ systemStore.nodeName }}

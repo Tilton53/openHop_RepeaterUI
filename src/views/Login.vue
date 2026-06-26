@@ -36,7 +36,7 @@
             <img
               :src="logoSrc"
               alt="pyMC"
-              class="logo-image h-36 sm:h-40 relative z-10"
+              :class="['logo-image h-36 sm:h-40 relative z-10', logoFilterClass]"
             />
           </div>
           <p v-if="siteName" class="text-content-primary dark:text-content-primary text-sm sm:text-base font-semibold mb-1">
@@ -217,6 +217,7 @@ const router = useRouter();
 const appRuntime = useAppRuntimeStore();
 const { theme } = useTheme();
 const logoSrc = computed(() => theme.value === 'dark' ? logoDark : logoLight);
+const logoFilterClass = 'grayscale opacity-70';
 
 const username = ref('admin');
 const password = ref('');
