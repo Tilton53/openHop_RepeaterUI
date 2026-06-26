@@ -1,5 +1,25 @@
 import { vi, beforeEach } from 'vitest';
-import apiClient from '@/utils/api';
+
+vi.mock('@/utils/api', () => ({
+  ApiService: {
+    get: vi.fn(),
+    post: vi.fn(),
+    getSerialPorts: vi.fn(),
+    importConfig: vi.fn(),
+  },
+  apiClient: {
+    get: vi.fn(),
+    post: vi.fn(),
+  },
+  default: {
+    get: vi.fn(),
+    post: vi.fn(),
+    getSerialPorts: vi.fn(),
+    importConfig: vi.fn(),
+  },
+}));
+
+import { apiClient } from '@/utils/api';
 
 class StorageMock {
   private data = new Map<string, string>();
