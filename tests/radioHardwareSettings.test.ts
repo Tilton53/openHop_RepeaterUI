@@ -164,7 +164,7 @@ describe('RadioHardwareSettings multi-radio support', () => {
     expect(wrapper.text()).not.toContain('Radio 3');
   });
 
-  it('saves radios via config import with legacy first-radio compatibility fields', async () => {
+  it('saves radios via config import with legacy fields synchronized to the selected active radio', async () => {
     vi.mocked(ApiService.importConfig).mockResolvedValue({ success: true } as any);
     vi.mocked(NamedApiService.importConfig).mockResolvedValue({ success: true } as any);
 
@@ -247,5 +247,61 @@ describe('RadioHardwareSettings multi-radio support', () => {
       ],
     });
     expect(fetchStatsMock).toHaveBeenCalled();
+  });
+
+  it('keeps legacy payload fields aligned with the first enabled radio when the first entry is disabled', async () => {
+    vi.mocked(ApiService.importConfig).mockResolvedValue({ success: true } as any);
+    vi.mocked(NamedApiService.importConfig).mockResolvedValue({ success: true } as any);
+
+    const wrapper = mountComponent();
+    await flushPromises();
+
+    const editButton = wrapper.findAll('button').find((b) => b.text().includes('Edit Settings'));
+    await editButton!.trigger('click');
+    await flushPromises();
+
+    const checkboxes = wrapper.findAll('input[type="checkbox"]');
+    await checkboxes[0].setValue(false);
+    await flushPromises();
+
+    const hostInput = wrapper
+      .find('[data-testid="radio-entry-1"]')
+      .find('input[placeholder="pymc-3e2834.local"]');
+    await hostInput.setValue('active-room.local');
+
+    const saveButton = wrapper.findAll('button').find((b) => b.text().includes('Save Changes'));
+    await saveButton!.trigger('click');
+    await flushPromises();
+
+    expect(NamedApiService.importConfig).toHaveBeenCalledWith({
+      name: 'bridge-a',
+      enabled: false,
+      radio_type: 'kiss',
+      kiss: {
+        port: '/dev/ttyUSB0',
+        baud_rate: 9600,
+      },
+      radios: [
+        {
+          name: 'bridge-a',
+          enabled: false,
+          radio_type: 'kiss',
+          kiss: {
+            port: '/dev/ttyUSB0',
+            baud_rate: 9600,
+          },
+        },
+        {
+          name: 'bridge-b',
+          enabled: false,
+          radio_type: 'pymc_tcp',
+          pymc_tcp: {
+            host: 'active-room.local',
+            port: 5055,
+            token: 'abc123',
+          },
+        },
+      ],
+    });
   });
 });
