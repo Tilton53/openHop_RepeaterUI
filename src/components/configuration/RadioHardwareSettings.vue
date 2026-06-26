@@ -23,6 +23,8 @@ interface HardwareOption {
 
 interface RadioEntryForm {
   id: string;
+  name: string;
+  enabled: boolean;
   radio_type: SupportedRadioType;
   kiss: {
     port: string;
@@ -156,6 +158,8 @@ function nextEntryId(): string {
 function createDefaultRadioEntry(type: SupportedRadioType = 'none'): RadioEntryForm {
   return {
     id: nextEntryId(),
+    name: '',
+    enabled: true,
     radio_type: type,
     kiss: {
       port: '/dev/ttyUSB0',
@@ -209,6 +213,9 @@ function createRadioEntryFromConfig(source: Record<string, unknown>): RadioEntry
   const sx = (source.sx1262 ?? {}) as Record<string, unknown>;
   const ch341 = (source.ch341 ?? {}) as Record<string, unknown>;
 
+  entry.name = asString(source.name, '');
+  entry.enabled = source.enabled === undefined ? true : Boolean(source.enabled);
+
   entry.kiss.port = asString(kiss.port, entry.kiss.port);
   entry.kiss.baud_rate = asNumber(kiss.baud_rate, entry.kiss.baud_rate);
 
@@ -250,7 +257,11 @@ function extractConfiguredRadios(nextConfig: Record<string, unknown>): RadioEntr
     return configuredRadios.map((radio) => createRadioEntryFromConfig((radio ?? {}) as Record<string, unknown>));
   }
 
-  return [createRadioEntryFromConfig(nextConfig)];
+  const fallback = createRadioEntryFromConfig(nextConfig);
+  if (!fallback.name) {
+    fallback.name = 'radio1';
+  }
+  return [fallback];
 }
 
 watch(
@@ -272,7 +283,9 @@ const currentRadioTypeLabel = computed(() => {
     .map((entry, index) => {
       const match = radioTypeOptions.find((opt) => opt.value === entry.radio_type);
       const label = match ? `${match.label} - ${match.detail}` : 'none - Disable radio hardware (no RF I/O)';
-      return `#${index + 1}: ${label}`;
+      const name = entry.name.trim() || `radio${index + 1}`;
+      const state = entry.enabled ? 'enabled' : 'disabled';
+      return `#${index + 1} ${name} (${state}): ${label}`;
     })
     .join(' • ');
 });
@@ -353,6 +366,8 @@ function setRadioType(entry: RadioEntryForm, type: SupportedRadioType) {
 
 function serializeRadioEntry(entry: RadioEntryForm): Record<string, unknown> {
   const payload: Record<string, unknown> = {
+    name: entry.name.trim(),
+    enabled: entry.enabled,
     radio_type: entry.radio_type === 'none' ? null : entry.radio_type,
   };
 
@@ -463,6 +478,10 @@ async function saveChanges(): Promise<boolean> {
     const trimmedEntries = radioEntries.value.length > 0 ? radioEntries.value : [createDefaultRadioEntry('none')];
 
     for (const [index, entry] of trimmedEntries.entries()) {
+      if (!entry.name.trim()) {
+        errorMessage.value = `Radio ${index + 1}: name is required`;
+        return false;
+      }
       if (entry.radio_type === 'pymc_tcp' && !entry.pymc_tcp.host.trim()) {
         errorMessage.value = `Radio ${index + 1}: TCP modem host is required for pymc_tcp`;
         return false;
@@ -596,7 +615,7 @@ onMounted(() => {
           <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
               <h4 class="text-sm font-semibold text-content-primary dark:text-content-primary">
-                Radio {{ index + 1 }}
+                Radio {{ index + 1 }}<span v-if="entry.name" class="font-normal text-content-secondary dark:text-content-muted"> — {{ entry.name }}</span>
               </h4>
               <p class="text-xs text-content-secondary dark:text-content-muted">
                 Select the transport and its hardware-specific connection details.
@@ -611,6 +630,31 @@ onMounted(() => {
             >
               Remove
             </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="text-content-secondary dark:text-content-muted text-xs sm:text-sm">Radio Name
+              <input
+                v-if="isEditing"
+                v-model="entry.name"
+                type="text"
+                class="cfg-input mt-1"
+                :placeholder="`radio${index + 1}`"
+              />
+              <span v-else class="block text-content-primary dark:text-content-primary font-mono text-sm mt-1">
+                {{ entry.name || `radio${index + 1}` }}
+              </span>
+            </label>
+
+            <label class="text-content-secondary dark:text-content-muted text-xs sm:text-sm">Enabled
+              <span v-if="isEditing" class="block mt-2">
+                <input v-model="entry.enabled" type="checkbox" class="mr-2" />
+                {{ entry.enabled ? 'Enabled' : 'Disabled' }}
+              </span>
+              <span v-else class="block text-content-primary dark:text-content-primary font-mono text-sm mt-1">
+                {{ entry.enabled ? 'Enabled' : 'Disabled' }}
+              </span>
+            </label>
           </div>
 
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">

@@ -53,10 +53,14 @@ vi.mock('@/stores/system', () => ({
       config: {
         radios: [
           {
+            name: 'bridge-a',
+            enabled: true,
             radio_type: 'kiss',
             kiss: { port: '/dev/ttyUSB0', baud_rate: 9600 },
           },
           {
+            name: 'bridge-b',
+            enabled: false,
             radio_type: 'pymc_tcp',
             pymc_tcp: { host: 'mesh.local', port: 5055, token: 'abc123' },
           },
@@ -115,8 +119,28 @@ describe('RadioHardwareSettings multi-radio support', () => {
 
     expect(wrapper.text()).toContain('Radio 1');
     expect(wrapper.text()).toContain('Radio 2');
-    expect(wrapper.text()).toContain('#1: kiss - KISS-modem over serial');
-    expect(wrapper.text()).toContain('#2: pymc_tcp - pymc_tcp firmware modem over Wi-Fi/TCP');
+    expect(wrapper.text()).toContain('bridge-a');
+    expect(wrapper.text()).toContain('bridge-b');
+    expect(wrapper.text()).toContain('#1 bridge-a (enabled): kiss - KISS-modem over serial');
+    expect(wrapper.text()).toContain('#2 bridge-b (disabled): pymc_tcp - pymc_tcp firmware modem over Wi-Fi/TCP');
+  });
+
+  it('shows editable radio names and enabled state for each entry', async () => {
+    const wrapper = mountComponent();
+    await flushPromises();
+
+    const editButton = wrapper.findAll('button').find((b) => b.text().includes('Edit Settings'));
+    await editButton!.trigger('click');
+    await flushPromises();
+
+    const nameInputs = wrapper.findAll('input[placeholder^="radio"]');
+    expect(nameInputs).toHaveLength(2);
+    expect((nameInputs[0].element as HTMLInputElement).value).toBe('bridge-a');
+    expect((nameInputs[1].element as HTMLInputElement).value).toBe('bridge-b');
+
+    const checkboxes = wrapper.findAll('input[type="checkbox"]');
+    expect(checkboxes.some((box) => (box.element as HTMLInputElement).checked)).toBe(true);
+    expect(checkboxes.some((box) => !(box.element as HTMLInputElement).checked)).toBe(true);
   });
 
   it('allows adding and removing radio entries while editing', async () => {
@@ -167,6 +191,8 @@ describe('RadioHardwareSettings multi-radio support', () => {
     expect(wrapper.text()).not.toContain('TCP modem host is required');
     expect(NamedApiService.importConfig).toHaveBeenCalledTimes(1);
     expect(NamedApiService.importConfig).toHaveBeenCalledWith({
+      name: 'bridge-a',
+      enabled: true,
       radio_type: 'sx1262_ch341',
       sx1262: {
         bus_id: 0,
@@ -187,6 +213,8 @@ describe('RadioHardwareSettings multi-radio support', () => {
       },
       radios: [
         {
+          name: 'bridge-a',
+          enabled: true,
           radio_type: 'sx1262_ch341',
           sx1262: {
             bus_id: 0,
@@ -207,6 +235,8 @@ describe('RadioHardwareSettings multi-radio support', () => {
           },
         },
         {
+          name: 'bridge-b',
+          enabled: false,
           radio_type: 'pymc_tcp',
           pymc_tcp: {
             host: 'radio2.local',
